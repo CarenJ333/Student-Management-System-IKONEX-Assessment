@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-
+import React from 'react';
+import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 
 import Dashboard    from './pages/Dashboard';
 import Streams      from './pages/Streams';
+import StreamDetail from './pages/StreamDetail';
 import Students     from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Subjects     from './pages/Subjects';
@@ -14,17 +14,17 @@ import ClassResults from './pages/ClassResults';
 
 function Sidebar() {
   const links = [
-    { section: 'Overview',    items: [{ to: '/',            label: '🏠 Dashboard' }] },
+    { section: 'Overview',    items: [{ to: '/', label: '🏠 Dashboard' }] },
     { section: 'Management',  items: [
-      { to: '/streams',   label: '🏫 Class Streams' },
-      { to: '/students',  label: '👨‍🎓 Students' },
-      { to: '/subjects',  label: '📚 Subjects' },
+      { to: '/streams',  label: '🏫 Class Streams' },
+      { to: '/students', label: '👨‍🎓 Students' },
+      { to: '/subjects', label: '📚 Subjects' },
     ]},
     { section: 'Assessments', items: [
       { to: '/assessments', label: '📝 Assessments' },
       { to: '/scores',      label: '✏️ Score Entry' },
     ]},
-    { section: 'Results',     items: [
+    { section: 'Results', items: [
       { to: '/results',       label: '📊 Student Results' },
       { to: '/class-results', label: '🏆 Class Rankings' },
     ]},
@@ -64,15 +64,16 @@ function App() {
         <Sidebar />
         <main className="main-content">
           <Routes>
-            <Route path="/"               element={<Dashboard />} />
-            <Route path="/streams"        element={<Streams />} />
-            <Route path="/students"       element={<Students />} />
-            <Route path="/students/:id"   element={<StudentDetail />} />
-            <Route path="/subjects"       element={<Subjects />} />
-            <Route path="/assessments"    element={<Assessments />} />
-            <Route path="/scores"         element={<ScoreEntry />} />
-            <Route path="/results"        element={<Results />} />
-            <Route path="/class-results"  element={<ClassResults />} />
+            <Route path="/"                element={<Dashboard />} />
+            <Route path="/streams"         element={<Streams />} />
+            <Route path="/streams/:id"     element={<StreamDetail />} />
+            <Route path="/students"        element={<Students />} />
+            <Route path="/students/:id"    element={<StudentDetail />} />
+            <Route path="/subjects"        element={<Subjects />} />
+            <Route path="/assessments"     element={<Assessments />} />
+            <Route path="/scores"          element={<ScoreEntry />} />
+            <Route path="/results"         element={<Results />} />
+            <Route path="/class-results"   element={<ClassResults />} />
           </Routes>
         </main>
       </div>

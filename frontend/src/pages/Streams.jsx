@@ -1,24 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getStreams, createStream, updateStream, deleteStream } from '../utils/api';
 import { useToast } from '../hooks/useToast';
 
 const EMPTY = { name: '', form_level: 1, academic_year: '2024/2025' };
 
 export default function Streams() {
-  const [streams, setStreams]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [modal, setModal]         = useState(false);
-  const [editing, setEditing]     = useState(null);
-  const [form, setForm]           = useState(EMPTY);
-  const [saving, setSaving]       = useState(false);
+  const [streams, setStreams]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [modal, setModal]       = useState(false);
+  const [editing, setEditing]   = useState(null);
+  const [form, setForm]         = useState(EMPTY);
+  const [saving, setSaving]     = useState(false);
   const { showToast, ToastComponent } = useToast();
+  const navigate = useNavigate();
 
   const load = () => getStreams().then(r => setStreams(Array.isArray(r.data) ? r.data : [])).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setModal(true); };
-  const openEdit   = (s)  => { setEditing(s); setForm({ name: s.name, form_level: s.form_level, academic_year: s.academic_year }); setModal(true); };
-  const close      = ()   => { setModal(false); setEditing(null); };
+  const openEdit   = (s) => { setEditing(s); setForm({ name: s.name, form_level: s.form_level, academic_year: s.academic_year }); setModal(true); };
+  const close      = ()  => { setModal(false); setEditing(null); };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -70,6 +72,7 @@ export default function Streams() {
                       <td>{s.academic_year}</td>
                       <td><span className="badge badge-active">{s.student_count}</span></td>
                       <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate(`/streams/${s.id}`)}>View</button>
                         <button className="btn btn-outline btn-sm" onClick={() => openEdit(s)}>Edit</button>
                         <button className="btn btn-danger  btn-sm" onClick={() => handleDelete(s)}>Delete</button>
                       </td>
