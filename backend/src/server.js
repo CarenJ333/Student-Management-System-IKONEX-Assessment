@@ -53,6 +53,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 
+app.get('/debug-db-config', (req, res) => {
+  res.json({
+    DB_HOST: process.env.DB_HOST,
+    DB_PORT: process.env.DB_PORT,
+    DB_USER: process.env.DB_USER,
+    DB_NAME: process.env.DB_NAME,
+    NODE_ENV: process.env.NODE_ENV
+  });
+});
+s
 app.listen(PORT, async () => {
   await testConnection();
   console.log(`🚀 Server running on http://localhost:${PORT}`);
