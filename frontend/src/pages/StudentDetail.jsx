@@ -60,7 +60,7 @@ export default function StudentDetail() {
           <button className="btn btn-outline" onClick={() => setEditing(!editing)}>
             {editing ? 'Cancel Edit' : '✏️ Edit'}
           </button>
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card (PDF)</button>
+          <button className="btn btn-primary" onClick={openReport}> Print Report Card (PDF)</button>
         </div>
       </div>
 

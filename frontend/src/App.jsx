@@ -18,23 +18,23 @@ import ScoreManagement  from './pages/ScoreManagement';
 function Sidebar() {
   const links = [
     { section: 'Overview', items: [
-      { to: '/', label: '🏠 Dashboard' },
+      { to: '/', label: 'Dashboard' },
     ]},
     { section: 'Management', items: [
-      { to: '/streams',  label: '🏫 Class Streams' },
-      { to: '/students', label: '👨‍🎓 Students' },
-      { to: '/subjects', label: '📚 Subjects' },
+      { to: '/streams',  label: 'Class Streams' },
+      { to: '/students', label: 'Students' },
+      { to: '/subjects', label: 'Subjects' },
     ]},
     { section: 'Assessments', items: [
-      { to: '/assessments', label: '📝 Assessments' },
-      { to: '/scores',         label: '✏️ Score Entry' },
-      { to: '/score-management', label: '🗂️ Score Management' },
+      { to: '/assessments', label: 'Assessments' },
+      { to: '/scores',         label: 'Score Entry' },
+      { to: '/score-management', label: 'Score Management' },
     ]},
     { section: 'Results & Reports', items: [
-      { to: '/results',             label: '📊 Student Results' },
-      { to: '/class-results',       label: '🏆 Class Rankings' },
-      { to: '/subject-performance', label: '📈 Subject Performance' },
-      { to: '/form-ranking',        label: '🌍 Form Rankings' },
+      { to: '/results',             label: 'Student Results' },
+      { to: '/class-results',       label: 'Class Rankings' },
+      { to: '/subject-performance', label: 'Subject Performance' },
+      { to: '/form-ranking',        label: 'Form Rankings' },
     ]},
   ];
 

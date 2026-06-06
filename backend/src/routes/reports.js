@@ -128,7 +128,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .sig { border-top:1px solid #333; width:160px; text-align:center; padding-top:4px; font-size:11px; color:#555; }
 @media print { body{padding:15px} }
 </style></head><body>
-<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+<button class="print-btn" onclick="window.print()">Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>STUDENT REPORT CARD &mdash; ${term || 'All Terms'} ${academic_year || ''}</h2>
@@ -239,7 +239,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
-<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+<button class="print-btn" onclick="window.print()">Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>CLASS PERFORMANCE REPORT &mdash; ${stream[0].name} | ${term || 'All Terms'} ${academic_year || ''}</h2>
@@ -310,7 +310,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
-<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+<button class="print-btn" onclick="window.print()">Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>SUBJECT PERFORMANCE &mdash; ${subject?.name} | ${stream?.name} | ${term || ''} ${academic_year || ''}</h2>
@@ -402,7 +402,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
-<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+<button class="print-btn" onclick="window.print()"> Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>FORM ${form_level} OVERALL RANKINGS &mdash; ${streams.map(s => s.name).join(', ')} | ${term || ''} ${academic_year || ''}</h2>

@@ -63,7 +63,7 @@ export default function ClassResults() {
             </div>
           </div>
           <button className="btn btn-primary" disabled={!selStream || loading} onClick={handleLoad}>
-            {loading ? 'Loading...' : '🏆 Load Rankings'}
+            {loading ? 'Loading...' : 'Load Rankings'}
           </button>
         </div>
 

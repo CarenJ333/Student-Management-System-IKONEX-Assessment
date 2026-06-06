@@ -129,7 +129,7 @@ export default function ScoreEntry() {
         <h2>Score Entry</h2>
         {selAssessment && students.length > 0 && (
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Saving...' : `💾 Save ${pendingCount} Scores`}
+            {submitting ? 'Saving...' : ` Save ${pendingCount} Scores`}
           </button>
         )}
       </div>
@@ -265,7 +265,7 @@ export default function ScoreEntry() {
                 setValidationErrors({});
               }}>Reset</button>
               <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? 'Saving...' : '💾 Save All Scores'}
+                {submitting ? 'Saving...' : ' Save All Scores'}
               </button>
             </div>
           </div>

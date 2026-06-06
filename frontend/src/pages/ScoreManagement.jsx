@@ -98,14 +98,14 @@ export default function ScoreManagement() {
                 {selStudent.first_name} {selStudent.last_name} — Scores & Subjects
               </div>
               <div style={{ display:'flex', gap:16, fontSize:13, color:'#6b7280' }}>
-                <span>📚 {uniqueSubjects} subjects</span>
-                <span>📝 {scores.length} score entries</span>
+                <span> {uniqueSubjects} subjects</span>
+                <span> {scores.length} score entries</span>
               </div>
             </div>
 
             {uniqueSubjects > 0 && (
               <div style={{ background:'#fff3cd', border:'1px solid #ffc107', borderRadius:6, padding:'10px 14px', marginBottom:16, fontSize:13 }}>
-                ⚠️ To remove a subject entry for this student, click <strong>Remove</strong> on that score row. This removes only that assessment score, not the subject itself.
+                 To remove a subject entry for this student, click <strong>Remove</strong> on that score row. This removes only that assessment score, not the subject itself.
               </div>
             )}
 
@@ -115,7 +115,7 @@ export default function ScoreManagement() {
                   <div key={subjectName} style={{ marginBottom:20 }}>
                     <div style={{ fontWeight:600, color:'var(--primary)', marginBottom:8, fontSize:14,
                       borderBottom:'2px solid var(--border)', paddingBottom:6 }}>
-                      📚 {subjectName}
+                       {subjectName}
                     </div>
                     <div className="table-wrap">
                       <table>

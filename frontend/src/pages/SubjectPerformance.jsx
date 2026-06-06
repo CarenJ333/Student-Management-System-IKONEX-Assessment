@@ -91,7 +91,7 @@ export default function SubjectPerformance() {
       <div className="page-header">
         <h2>Subject Performance</h2>
         {classResults?.length > 0 && (
-          <button className="btn btn-primary" onClick={openClassReport}>📄 Print Subject Report</button>
+          <button className="btn btn-primary" onClick={openClassReport}> Print Subject Report</button>
         )}
       </div>
       <div className="page-body">
@@ -159,7 +159,7 @@ export default function SubjectPerformance() {
           <button className="btn btn-primary"
             disabled={!selStudent || !selStudentSubject || studentLoading}
             onClick={handleLoadStudentSubject}>
-            {studentLoading ? 'Loading...' : '📊 View Student Subject Performance'}
+            {studentLoading ? 'Loading...' : 'View Student Subject Performance'}
           </button>
 
           {/* Student subject result */}
@@ -201,7 +201,7 @@ export default function SubjectPerformance() {
 
         {/* ── SECTION 2: Class subject performance ── */}
         <div className="card">
-          <div className="card-title">📈 Class Performance for a Selected Subject</div>
+          <div className="card-title">Class Performance for a Selected Subject</div>
           <p style={{ fontSize:13, color:'#6b7280', marginBottom:16 }}>
             See how all students in a class performed in one subject, ranked by score.
           </p>
@@ -222,7 +222,7 @@ export default function SubjectPerformance() {
             </div>
           </div>
           <button className="btn btn-outline" disabled={!selStream || !selSubject || loading} onClick={handleLoadClass}>
-            {loading ? 'Loading...' : '📊 Load Class Subject Performance'}
+            {loading ? 'Loading...' : 'Load Class Subject Performance'}
           </button>
 
           {classResults && (

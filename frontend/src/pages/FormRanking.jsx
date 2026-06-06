@@ -30,7 +30,7 @@ export default function FormRanking() {
       <div className="page-header">
         <h2>Form-Wide Rankings</h2>
         {results && (
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Form Report</button>
+          <button className="btn btn-primary" onClick={openReport}>Print Form Report</button>
         )}
       </div>
       <div className="page-body">
@@ -55,7 +55,7 @@ export default function FormRanking() {
             </div>
           </div>
           <button className="btn btn-primary" disabled={loading} onClick={handleLoad}>
-            {loading ? 'Loading...' : '🏆 Load Form Rankings'}
+            {loading ? 'Loading...' : ' Load Form Rankings'}
           </button>
         </div>
 
