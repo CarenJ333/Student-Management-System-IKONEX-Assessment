@@ -14,15 +14,19 @@ const pool = mysql.createPool({
 });
 
 
-async function testConnection() {
+const testConnection = async () => {
   try {
-    const conn = await pool.getConnection();
-    console.log('MySQL connected successfully');
-    conn.release();
-  } catch (err) {
-    console.error('MySQL connection failed:', err.message);
-    process.exit(1);
+    const connection = await pool.getConnection();
+    console.log('MySQL connected successfully to Aiven');
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('MySQL connection failed. Full error details:');
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return false;
   }
-}
+};
 
 module.exports = { pool, testConnection };

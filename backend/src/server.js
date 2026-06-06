@@ -5,6 +5,16 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
+// Add this after the dotenv section
+console.log('=== ENVIRONMENT DEBUG ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DB_HOST:', process.env.DB_HOST ? 'SET' : 'NOT SET');
+console.log('DB_USER:', process.env.DB_USER ? 'SET' : 'NOT SET');
+console.log('DB_PORT:', process.env.DB_PORT);
+console.log('DB_NAME:', process.env.DB_NAME);
+console.log('========================');
+
+
 const { testConnection } = require('./config/database');
 const streamsRouter = require('./routes/streams');
 const studentsRouter = require('./routes/students');
