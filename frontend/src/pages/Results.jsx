@@ -41,7 +41,8 @@ export default function Results() {
   };
 
   const openReport = () => {
-    window.open(`/api/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`, '_blank');
+    const url = `/api/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`;
+    window.open(url, '_blank');
   };
 
   return (

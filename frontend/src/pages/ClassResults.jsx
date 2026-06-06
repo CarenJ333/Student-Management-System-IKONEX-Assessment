@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { getStreams, getClassResults } from '../utils/api';
 
 export default function ClassResults() {
-  const [streams, setStreams]   = useState([]);
+  const [streams, setStreams]     = useState([]);
   const [selStream, setSelStream] = useState('');
-  const [term, setTerm]         = useState('Term 1');
-  const [year, setYear]         = useState('2024/2025');
-  const [results, setResults]   = useState(null);
-  const [loading, setLoading]   = useState(false);
+  const [term, setTerm]           = useState('Term 1');
+  const [year, setYear]           = useState('2024/2025');
+  const [results, setResults]     = useState(null);
+  const [loading, setLoading]     = useState(false);
 
-  useEffect(() => { getStreams().then(r => setStreams(Array.isArray(r.data) ? r.data : [])); }, []);
+  useEffect(() => {
+    getStreams().then(r => setStreams(Array.isArray(r.data) ? r.data : []));
+  }, []);
 
   const handleLoad = () => {
     if (!selStream) return;
@@ -20,7 +22,7 @@ export default function ClassResults() {
   };
 
   const openReport = () => {
-    const win = window.open(`/api/reports/class/${selStream}/html?term=${term}&academic_year=${year}`, '_blank'); win.onload = () => win.print();
+    window.open(`/api/reports/class/${selStream}/html?term=${term}&academic_year=${year}`, '_blank');
   };
 
   const streamName = streams.find(s => String(s.id) === String(selStream))?.name || '';
@@ -71,29 +73,26 @@ export default function ClassResults() {
               <div className="card-title" style={{ margin: 0 }}>
                 {streamName} — {term} {year}
               </div>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>
-                {results.total_students} students
-              </div>
+              <span style={{ fontSize: 13, color: '#6b7280' }}>{results.total_students} students</span>
             </div>
 
-            {/* Top 3 podium */}
-            {results.results.length >= 3 && (
+            {results.results?.length >= 3 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 24, alignItems: 'flex-end' }}>
                 {[results.results[1], results.results[0], results.results[2]].map((s, i) => {
-                  const medals = ['🥈', '🥇', '🥉'];
+                  const medals  = ['🥈', '🥇', '🥉'];
                   const heights = [90, 110, 75];
+                  const colors  = ['#9e9e9e', '#e8a020', '#cd7f32'];
                   return (
                     <div key={s.student_id} style={{ textAlign: 'center', width: 130 }}>
                       <div style={{ fontSize: 22 }}>{medals[i]}</div>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{s.first_name} {s.last_name}</div>
                       <div style={{ fontSize: 12, color: '#6b7280' }}>{s.average}%</div>
                       <div style={{
-                        height: heights[i], background: i === 1 ? '#e8a020' : i === 0 ? '#9e9e9e' : '#cd7f32',
-                        borderRadius: '6px 6px 0 0', marginTop: 8, display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 20
-                      }}>
-                        #{s.position}
-                      </div>
+                        height: heights[i], background: colors[i],
+                        borderRadius: '6px 6px 0 0', marginTop: 8,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'white', fontWeight: 700, fontSize: 20
+                      }}>#{s.position}</div>
                     </div>
                   );
                 })}
@@ -103,15 +102,19 @@ export default function ClassResults() {
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Pos</th><th>Student No</th><th>Name</th><th>Subjects</th><th>Total Points</th><th>Average %</th><th>Grade</th><th>Remark</th></tr>
+                  <tr>
+                    <th>Position</th><th>Student No</th><th>Name</th>
+                    <th>Subjects</th><th>Total Points</th><th>Average %</th>
+                    <th>Grade</th><th>Remark</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {results.results.map(s => (
+                  {results.results?.map(s => (
                     <tr key={s.student_id}>
                       <td>
-                        <span style={{ fontWeight: 700, color: s.position <= 3 ? '#e8a020' : '#333' }}>
-                          {s.position <= 3 ? ['🥇','🥈','🥉'][s.position - 1] : ''} #{s.position}
-                        </span>
+                        <strong style={{ color: s.position <= 3 ? '#e8a020' : '#333' }}>
+                          {s.position <= 3 ? ['🥇','🥈','🥉'][s.position - 1] + ' ' : ''}#{s.position}
+                        </strong>
                       </td>
                       <td>{s.student_number}</td>
                       <td>{s.last_name}, {s.first_name}</td>
@@ -122,7 +125,7 @@ export default function ClassResults() {
                       <td style={{ color: '#6b7280' }}>{s.grade_label}</td>
                     </tr>
                   ))}
-                  {!results.results.length && (
+                  {!results.results?.length && (
                     <tr><td colSpan={8} className="empty">No results found for this period</td></tr>
                   )}
                 </tbody>

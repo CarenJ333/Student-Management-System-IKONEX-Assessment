@@ -93,6 +93,18 @@ router.get('/student/:student_id/html', async (req, res) => {
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:Arial,sans-serif; font-size:13px; color:#111; padding:30px; }
+.print-btn {
+  position: fixed; top: 16px; right: 16px; z-index: 999;
+  background: #1a3c6e; color: white; border: none; cursor: pointer;
+  padding: 10px 22px; border-radius: 6px; font-size: 14px; font-weight: 600;
+  font-family: Arial, sans-serif; letter-spacing: 0.3px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.15s, transform 0.1s;
+}
+.print-btn:hover { background: #2a5ba8; transform: scale(1.02); }
+.print-btn:active { transform: scale(0.98); }
+@media print { .print-btn { display: none !important; } }
 .header { text-align:center; border-bottom:3px solid #1a3c6e; padding-bottom:14px; margin-bottom:20px; }
 .header h1 { font-size:24px; color:#1a3c6e; font-weight:800; }
 .header h2 { font-size:14px; color:#555; margin-top:4px; }
@@ -116,6 +128,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .sig { border-top:1px solid #333; width:160px; text-align:center; padding-top:4px; font-size:11px; color:#555; }
 @media print { body{padding:15px} }
 </style></head><body>
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>STUDENT REPORT CARD &mdash; ${term || 'All Terms'} ${academic_year || ''}</h2>
@@ -226,6 +239,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>CLASS PERFORMANCE REPORT &mdash; ${stream[0].name} | ${term || 'All Terms'} ${academic_year || ''}</h2>
@@ -296,6 +310,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>SUBJECT PERFORMANCE &mdash; ${subject?.name} | ${stream?.name} | ${term || ''} ${academic_year || ''}</h2>
@@ -387,6 +402,7 @@ tr:nth-child(even) td { background:#f7f9fc; }
 .grade-C{color:#8a6d3b;font-weight:bold} .grade-D,.grade-E,.grade-U{color:#d9534f}
 @media print { body{padding:15px} }
 </style></head><body>
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
 <div class="header">
   <h1>IKONEX ACADEMY</h1>
   <h2>FORM ${form_level} OVERALL RANKINGS &mdash; ${streams.map(s => s.name).join(', ')} | ${term || ''} ${academic_year || ''}</h2>

@@ -93,10 +93,10 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-title">Quick Actions</div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={() => navigate('/students')}>➕ Register Student</button>
-            <button className="btn btn-outline"  onClick={() => navigate('/streams')}>🏫 Add Class Stream</button>
-            <button className="btn btn-outline"  onClick={() => navigate('/scores')}>✏️ Enter Scores</button>
-            <button className="btn btn-outline"  onClick={() => navigate('/class-results')}>🏆 View Rankings</button>
+            <button className="btn btn-primary" onClick={() => navigate('/students')}>Register Student</button>
+            <button className="btn btn-outline"  onClick={() => navigate('/streams')}>Add Class Stream</button>
+            <button className="btn btn-outline"  onClick={() => navigate('/scores')}>Enter Scores</button>
+            <button className="btn btn-outline"  onClick={() => navigate('/class-results')}> View Rankings</button>
           </div>
         </div>
       </div>

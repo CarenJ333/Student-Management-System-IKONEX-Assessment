@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --testTimeout=10000 --runInBand",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
@@ -19,6 +19,8 @@
     "mysql2": "^3.22.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }

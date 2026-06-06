@@ -43,16 +43,7 @@ export default function StudentDetail() {
 
   const openReport = () => {
     const url = `/api/reports/student/${id}/html?term=${term}&academic_year=${year}`;
-    const win = window.open(url, '_blank');
-    const tryPrint = setInterval(() => {
-      try {
-        if (win.document.readyState === 'complete') {
-          clearInterval(tryPrint);
-          win.focus();
-          win.print();
-        }
-      } catch (e) { clearInterval(tryPrint); }
-    }, 300);
+    window.open(url, '_blank');
   };
 
   if (!student) return <div className="loading">Loading student...</div>;

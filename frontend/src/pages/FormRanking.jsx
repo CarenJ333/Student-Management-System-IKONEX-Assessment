@@ -6,12 +6,7 @@ export default function FormRanking() {
   const [term, setTerm]           = useState('Term 1');
   const [year, setYear]           = useState('2024/2025');
   const [results, setResults]     = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const openReport = () => {
-    const win = window.open(`/api/reports/form-ranking/html?form_level=${formLevel}&term=${term}&academic_year=${year}`, '_blank');
-    win.onload = () => win.print();
-  };
+  const [loading, setLoading]     = useState(false);
 
   const handleLoad = () => {
     setLoading(true);
@@ -19,6 +14,10 @@ export default function FormRanking() {
       .then(r => setResults(r.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
+  };
+
+  const openReport = () => {
+    window.open(`/api/reports/form-ranking/html?form_level=${formLevel}&term=${term}&academic_year=${year}`, '_blank');
   };
 
   const gradeColor = (g) => {
@@ -31,7 +30,7 @@ export default function FormRanking() {
       <div className="page-header">
         <h2>Form-Wide Rankings</h2>
         {results && (
-          <button className="btn btn-primary" onClick={openReport}>📄 Print as PDF</button>
+          <button className="btn btn-primary" onClick={openReport}>📄 Print Form Report</button>
         )}
       </div>
       <div className="page-body">
@@ -66,15 +65,17 @@ export default function FormRanking() {
               <div className="card-title" style={{ margin: 0 }}>
                 Form {formLevel} Overall Rankings — {results.streams?.join(', ')}
               </div>
-              <span style={{ fontSize: 13, color: '#6b7280' }}>{results.total_students} students across all streams</span>
+              <span style={{ fontSize: 13, color: '#6b7280' }}>
+                {results.total_students} students across all streams
+              </span>
             </div>
 
-            {/* Top 3 podium */}
             {results.results?.length >= 3 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 24, alignItems: 'flex-end' }}>
                 {[results.results[1], results.results[0], results.results[2]].map((s, i) => {
                   const medals  = ['🥈', '🥇', '🥉'];
                   const heights = [90, 110, 75];
+                  const colors  = ['#9e9e9e', '#e8a020', '#cd7f32'];
                   return (
                     <div key={s.student_id} style={{ textAlign: 'center', width: 140 }}>
                       <div style={{ fontSize: 22 }}>{medals[i]}</div>
@@ -82,8 +83,7 @@ export default function FormRanking() {
                       <div style={{ fontSize: 11, color: '#6b7280' }}>{s.stream_name}</div>
                       <div style={{ fontSize: 12, color: '#6b7280' }}>{s.average}%</div>
                       <div style={{
-                        height: heights[i],
-                        background: i === 1 ? '#e8a020' : i === 0 ? '#9e9e9e' : '#cd7f32',
+                        height: heights[i], background: colors[i],
                         borderRadius: '6px 6px 0 0', marginTop: 8,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: 'white', fontWeight: 700, fontSize: 20
@@ -98,14 +98,8 @@ export default function FormRanking() {
               <table>
                 <thead>
                   <tr>
-                    <th>Overall Pos</th>
-                    <th>Student No</th>
-                    <th>Name</th>
-                    <th>Stream</th>
-                    <th>Total Points</th>
-                    <th>Average %</th>
-                    <th>Grade</th>
-                    <th>Remark</th>
+                    <th>Overall Pos</th><th>Student No</th><th>Name</th><th>Stream</th>
+                    <th>Total Points</th><th>Average %</th><th>Grade</th><th>Remark</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -113,13 +107,17 @@ export default function FormRanking() {
                     <tr key={s.student_id}>
                       <td>
                         <strong style={{ color: s.overall_position <= 3 ? '#e8a020' : '#333' }}>
-                          {s.overall_position <= 3 ? ['🥇','🥈','🥉'][s.overall_position - 1] : ''}
+                          {s.overall_position <= 3 ? ['🥇','🥈','🥉'][s.overall_position - 1] + ' ' : ''}
                           #{s.overall_position}
                         </strong>
                       </td>
                       <td>{s.student_number}</td>
                       <td>{s.last_name}, {s.first_name}</td>
-                      <td><span className="badge" style={{ background: '#e8f0fe', color: '#1a3c6e' }}>{s.stream_name}</span></td>
+                      <td>
+                        <span className="badge" style={{ background: '#e8f0fe', color: '#1a3c6e' }}>
+                          {s.stream_name}
+                        </span>
+                      </td>
                       <td>{s.total_points}</td>
                       <td><strong>{s.average}%</strong></td>
                       <td><span style={{ color: gradeColor(s.grade), fontWeight: 600 }}>{s.grade}</span></td>
