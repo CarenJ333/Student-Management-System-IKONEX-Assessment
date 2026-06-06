@@ -122,4 +122,39 @@ router.post('/bulk', async (req, res) => {
   res.json({ inserted: inserted.length, errors });
 });
 
+
+// DELETE score by student + assessment (to remove a subject entry)
+router.delete('/student/:student_id/assessment/:assessment_id', async (req, res) => {
+  try {
+    const { student_id, assessment_id } = req.params;
+    await pool.query(
+      'DELETE FROM scores WHERE student_id = ? AND assessment_id = ?',
+      [student_id, assessment_id]
+    );
+    res.json({ message: 'Score removed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET assessments with scores for a student (to manage their subjects)
+router.get('/student/:student_id', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT sc.*, a.name AS assessment_name, a.type, a.max_score,
+             sub.name AS subject_name, sub.id AS subject_id,
+             cs.name AS stream_name
+      FROM scores sc
+      JOIN assessments a ON a.id = sc.assessment_id
+      JOIN subjects sub ON sub.id = a.subject_id
+      JOIN class_streams cs ON cs.id = a.stream_id
+      WHERE sc.student_id = ?
+      ORDER BY sub.name, a.type
+    `, [req.params.student_id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

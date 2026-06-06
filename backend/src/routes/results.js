@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 
-// Helper: get grade from score
 async function getGrade(pool, score) {
   const [grades] = await pool.query(
     'SELECT * FROM grading_scales WHERE ? BETWEEN min_score AND max_score LIMIT 1',
@@ -11,86 +10,137 @@ async function getGrade(pool, score) {
   return grades.length ? grades[0] : { grade: 'U', label: 'Fail', points: 0 };
 }
 
-// GET student results — all subjects, totals, average, grade, overall position
+// Helper: calculate weighted score for a subject
+// Exam (max 70) + CA (max 30) = 100 total
+// We normalize each assessment type to its weight
+async function getStudentSubjectScore(pool, student_id, subject_id, stream_id, term, academic_year) {
+  let query = `
+    SELECT sc.score, a.max_score, a.type, a.weight
+    FROM scores sc
+    JOIN assessments a ON a.id = sc.assessment_id
+    WHERE sc.student_id = ? AND a.subject_id = ? AND a.stream_id = ?
+  `;
+  const params = [student_id, subject_id, stream_id];
+  if (term)          { query += ' AND a.term = ?';          params.push(term); }
+  if (academic_year) { query += ' AND a.academic_year = ?'; params.push(academic_year); }
+
+  const [scores] = await pool.query(query, params);
+
+  // Separate exam and CA scores
+  const examScores = scores.filter(s => s.type === 'Exam');
+  const caScores   = scores.filter(s => s.type === 'CA' || s.type === 'Quiz' || s.type === 'Assignment');
+
+  // Calculate exam total as percentage of 70
+  const examTotal    = examScores.reduce((s, r) => s + parseFloat(r.score), 0);
+  const examMax      = examScores.reduce((s, r) => s + parseFloat(r.max_score), 0);
+  const examWeighted = examMax > 0 ? (examTotal / examMax) * 70 : 0;
+
+  // Calculate CA total as percentage of 30
+  const caTotal    = caScores.reduce((s, r) => s + parseFloat(r.score), 0);
+  const caMax      = caScores.reduce((s, r) => s + parseFloat(r.max_score), 0);
+  const caWeighted = caMax > 0 ? (caTotal / caMax) * 30 : 0;
+
+  // Combined score out of 100
+  const combined = examWeighted + caWeighted;
+
+  return {
+    exam_score: Math.round(examWeighted * 100) / 100,
+    ca_score:   Math.round(caWeighted   * 100) / 100,
+    combined:   Math.round(combined     * 100) / 100,
+    has_scores: scores.length > 0,
+  };
+}
+
+// GET student results
 router.get('/student/:student_id', async (req, res) => {
   try {
-    const { term, academic_year } = req.query;
+    const { term, academic_year, subject_id } = req.query;
     const { student_id } = req.params;
 
-    // Get student info
     const [students] = await pool.query(
-      'SELECT s.*, cs.name AS stream_name FROM students s JOIN class_streams cs ON cs.id = s.stream_id WHERE s.id = ?',
+      'SELECT s.*, cs.name AS stream_name, cs.id AS stream_id FROM students s JOIN class_streams cs ON cs.id = s.stream_id WHERE s.id = ?',
       [student_id]
     );
     if (!students.length) return res.status(404).json({ error: 'Student not found' });
     const student = students[0];
 
-    // Get all scores for this student
-    let scoreQuery = `
-      SELECT sc.score, a.max_score, a.weight, a.type, a.term, a.academic_year,
-             sub.id AS subject_id, sub.name AS subject_name, sub.code
-      FROM scores sc
-      JOIN assessments a ON a.id = sc.assessment_id
-      JOIN subjects sub ON sub.id = a.subject_id
-      WHERE sc.student_id = ?
+    // Get subjects — filter by subject_id if provided
+    let subjectQuery = `
+      SELECT sub.id, sub.name, sub.code FROM subjects sub
+      JOIN stream_subjects ss ON ss.subject_id = sub.id
+      WHERE ss.stream_id = ?
     `;
-    const params = [student_id];
-    if (term)          { scoreQuery += ' AND a.term = ?';         params.push(term); }
-    if (academic_year) { scoreQuery += ' AND a.academic_year = ?';params.push(academic_year); }
+    const subjectParams = [student.stream_id];
+    if (subject_id) { subjectQuery += ' AND sub.id = ?'; subjectParams.push(subject_id); }
+    const [streamSubjects] = await pool.query(subjectQuery, subjectParams);
 
-    const [scores] = await pool.query(scoreQuery, params);
-
-    // Group by subject
-    const subjectMap = {};
-    for (const row of scores) {
-      if (!subjectMap[row.subject_id]) {
-        subjectMap[row.subject_id] = {
-          subject_id: row.subject_id,
-          subject_name: row.subject_name,
-          code: row.code,
-          scores: [],
-          total: 0,
-          max_total: 0,
-        };
-      }
-      subjectMap[row.subject_id].scores.push(row);
-      subjectMap[row.subject_id].total     += parseFloat(row.score);
-      subjectMap[row.subject_id].max_total += parseFloat(row.max_score);
-    }
-
-    // Calculate percentage and grade per subject
     const subjectResults = [];
     let grandTotal = 0;
-    let grandMaxTotal = 0;
 
-    for (const subj of Object.values(subjectMap)) {
-      const percentage = subj.max_total > 0
-        ? (subj.total / subj.max_total) * 100
-        : 0;
-      const gradeInfo = await getGrade(pool, percentage);
+    // Get all active students in stream for position calculations
+    const [classStudentsAll] = await pool.query(
+      'SELECT id FROM students WHERE stream_id = ? AND status = "Active"', [student.stream_id]
+    );
+
+    for (const subj of streamSubjects) {
+      const scores = await getStudentSubjectScore(pool, student_id, subj.id, student.stream_id, term, academic_year);
+      if (!scores.has_scores) continue;
+
+      // Calculate subject position within class
+      const subjectScores = [];
+      for (const cs of classStudentsAll) {
+        const sc = await getStudentSubjectScore(pool, cs.id, subj.id, student.stream_id, term, academic_year);
+        if (sc.has_scores) subjectScores.push({ id: cs.id, combined: sc.combined });
+      }
+      subjectScores.sort((a, b) => b.combined - a.combined);
+      const subjectPos = subjectScores.findIndex(s => s.id === parseInt(student_id)) + 1;
+
+      const gradeInfo = await getGrade(pool, scores.combined);
       subjectResults.push({
-        ...subj,
-        percentage: Math.round(percentage * 100) / 100,
-        grade: gradeInfo.grade,
-        grade_label: gradeInfo.label,
-        points: gradeInfo.points,
+        subject_id:       subj.id,
+        subject_name:     subj.name,
+        code:             subj.code,
+        exam_score:       scores.exam_score,
+        ca_score:         scores.ca_score,
+        combined:         scores.combined,
+        grade:            gradeInfo.grade,
+        grade_label:      gradeInfo.label,
+        points:           gradeInfo.points,
+        subject_position: subjectPos,
+        out_of:           subjectScores.length,
       });
-      grandTotal    += subj.total;
-      grandMaxTotal += subj.max_total;
+      grandTotal += scores.combined;
     }
 
-    const overallPercentage = grandMaxTotal > 0 ? (grandTotal / grandMaxTotal) * 100 : 0;
-    const overallGrade = await getGrade(pool, overallPercentage);
+    const average      = subjectResults.length > 0 ? grandTotal / subjectResults.length : 0;
+    const overallGrade = await getGrade(pool, average);
+
+    // If filtering by a single subject, calculate student's position in that subject within the class
+    let subjectPosition = null;
+    if (subject_id && subjectResults.length === 1) {
+      const [classStudents] = await pool.query(
+        'SELECT id FROM students WHERE stream_id = ? AND status = "Active"', [student.stream_id]
+      );
+      const classScores = [];
+      for (const cs of classStudents) {
+        const sc = await getStudentSubjectScore(pool, cs.id, subject_id, student.stream_id, term, academic_year);
+        if (sc.has_scores) classScores.push({ id: cs.id, combined: sc.combined });
+      }
+      classScores.sort((a, b) => b.combined - a.combined);
+      const pos = classScores.findIndex(s => s.id === parseInt(student_id));
+      subjectPosition = { position: pos + 1, out_of: classScores.length };
+    }
 
     res.json({
       student,
+      subject_position: subjectPosition,
       subjects: subjectResults,
       summary: {
-        total_marks: Math.round(grandTotal * 100) / 100,
-        max_marks: grandMaxTotal,
-        average: Math.round(overallPercentage * 100) / 100,
-        grade: overallGrade.grade,
-        grade_label: overallGrade.label,
+        total_subjects: subjectResults.length,
+        total_points:   Math.round(grandTotal * 100) / 100,
+        average:        Math.round(average   * 100) / 100,
+        grade:          overallGrade.grade,
+        grade_label:    overallGrade.label,
       }
     });
   } catch (err) {
@@ -98,53 +148,49 @@ router.get('/student/:student_id', async (req, res) => {
   }
 });
 
-// GET class results — all students ranked by performance
+// GET class results — ranked
 router.get('/class/:stream_id', async (req, res) => {
   try {
-    const { term, academic_year, subject_id } = req.query;
+    const { term, academic_year } = req.query;
     const { stream_id } = req.params;
 
-    // Get all students in the stream
     const [students] = await pool.query(
       'SELECT * FROM students WHERE stream_id = ? AND status = "Active" ORDER BY last_name, first_name',
       [stream_id]
     );
 
+    const [streamSubjects] = await pool.query(`
+      SELECT sub.id FROM subjects sub
+      JOIN stream_subjects ss ON ss.subject_id = sub.id
+      WHERE ss.stream_id = ?
+    `, [stream_id]);
+
     const results = [];
-
     for (const student of students) {
-      let scoreQuery = `
-        SELECT sc.score, a.max_score, a.subject_id
-        FROM scores sc
-        JOIN assessments a ON a.id = sc.assessment_id
-        WHERE sc.student_id = ? AND a.stream_id = ?
-      `;
-      const params = [student.id, stream_id];
-      if (subject_id)   { scoreQuery += ' AND a.subject_id = ?';   params.push(subject_id); }
-      if (term)         { scoreQuery += ' AND a.term = ?';         params.push(term); }
-      if (academic_year){ scoreQuery += ' AND a.academic_year = ?';params.push(academic_year); }
+      let grandTotal = 0;
+      let subjectCount = 0;
 
-      const [scores] = await pool.query(scoreQuery, params);
-      const total    = scores.reduce((sum, s) => sum + parseFloat(s.score), 0);
-      const maxTotal = scores.reduce((sum, s) => sum + parseFloat(s.max_score), 0);
-      const average  = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+      for (const subj of streamSubjects) {
+        const scores = await getStudentSubjectScore(pool, student.id, subj.id, stream_id, term, academic_year);
+        if (scores.has_scores) { grandTotal += scores.combined; subjectCount++; }
+      }
+
+      const average   = subjectCount > 0 ? grandTotal / subjectCount : 0;
       const gradeInfo = await getGrade(pool, average);
 
       results.push({
-        student_id: student.id,
+        student_id:     student.id,
         student_number: student.student_number,
-        first_name: student.first_name,
-        last_name: student.last_name,
-        total_marks: Math.round(total * 100) / 100,
-        max_marks: maxTotal,
-        average: Math.round(average * 100) / 100,
-        grade: gradeInfo.grade,
-        grade_label: gradeInfo.label,
-        subjects_entered: scores.length,
+        first_name:     student.first_name,
+        last_name:      student.last_name,
+        total_points:   Math.round(grandTotal * 100) / 100,
+        average:        Math.round(average    * 100) / 100,
+        subjects_count: subjectCount,
+        grade:          gradeInfo.grade,
+        grade_label:    gradeInfo.label,
       });
     }
 
-    // Sort by average descending and assign positions
     results.sort((a, b) => b.average - a.average);
     results.forEach((r, i) => { r.position = i + 1; });
 
@@ -158,30 +204,97 @@ router.get('/class/:stream_id', async (req, res) => {
 router.get('/subject/:subject_id/stream/:stream_id', async (req, res) => {
   try {
     const { subject_id, stream_id } = req.params;
-    const { term, academic_year } = req.query;
+    const { term, academic_year }   = req.query;
 
-    let query = `
-      SELECT s.id AS student_id, s.first_name, s.last_name, s.student_number,
-             SUM(sc.score) AS total, SUM(a.max_score) AS max_total
-      FROM students s
-      JOIN scores sc ON sc.student_id = s.id
-      JOIN assessments a ON a.id = sc.assessment_id
-      WHERE s.stream_id = ? AND a.subject_id = ?
-    `;
-    const params = [stream_id, subject_id];
-    if (term)         { query += ' AND a.term = ?';         params.push(term); }
-    if (academic_year){ query += ' AND a.academic_year = ?';params.push(academic_year); }
-    query += ' GROUP BY s.id ORDER BY total DESC';
+    const [students] = await pool.query(
+      'SELECT * FROM students WHERE stream_id = ? AND status = "Active" ORDER BY last_name, first_name',
+      [stream_id]
+    );
 
-    const [rows] = await pool.query(query, params);
-    const withGrades = await Promise.all(rows.map(async (r) => {
-      const pct = r.max_total > 0 ? (r.total / r.max_total) * 100 : 0;
-      const g = await getGrade(pool, pct);
-      return { ...r, percentage: Math.round(pct * 100) / 100, grade: g.grade, grade_label: g.label };
-    }));
+    const results = [];
+    for (const student of students) {
+      const scores = await getStudentSubjectScore(pool, student.id, subject_id, stream_id, term, academic_year);
+      if (!scores.has_scores) continue;
+      const g = await getGrade(pool, scores.combined);
+      results.push({
+        student_id:     student.id,
+        student_number: student.student_number,
+        first_name:     student.first_name,
+        last_name:      student.last_name,
+        exam_score:     scores.exam_score,
+        ca_score:       scores.ca_score,
+        percentage:     scores.combined,
+        grade:          g.grade,
+        grade_label:    g.label,
+      });
+    }
 
-    withGrades.forEach((r, i) => { r.subject_position = i + 1; });
-    res.json(withGrades);
+    results.sort((a, b) => b.percentage - a.percentage);
+    results.forEach((r, i) => { r.subject_position = i + 1; });
+
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET combined form ranking (e.g. all Form 1 streams together)
+router.get('/form-ranking', async (req, res) => {
+  try {
+    const { form_level, academic_year, term } = req.query;
+    if (!form_level) return res.status(400).json({ error: 'form_level is required' });
+
+    const [streams] = await pool.query(
+      'SELECT * FROM class_streams WHERE form_level = ? AND academic_year = ?',
+      [form_level, academic_year || '2024/2025']
+    );
+    if (!streams.length) return res.status(404).json({ error: 'No streams found for this form level' });
+
+    const allResults = [];
+
+    for (const stream of streams) {
+      const [students] = await pool.query(
+        'SELECT * FROM students WHERE stream_id = ? AND status = "Active"',
+        [stream.id]
+      );
+      const [streamSubjects] = await pool.query(`
+        SELECT sub.id FROM subjects sub
+        JOIN stream_subjects ss ON ss.subject_id = sub.id
+        WHERE ss.stream_id = ?
+      `, [stream.id]);
+
+      for (const student of students) {
+        let grandTotal = 0, subjectCount = 0;
+        for (const subj of streamSubjects) {
+          const scores = await getStudentSubjectScore(pool, student.id, subj.id, stream.id, term, academic_year);
+          if (scores.has_scores) { grandTotal += scores.combined; subjectCount++; }
+        }
+        const average   = subjectCount > 0 ? grandTotal / subjectCount : 0;
+        const gradeInfo = await getGrade(pool, average);
+        allResults.push({
+          student_id:     student.id,
+          student_number: student.student_number,
+          first_name:     student.first_name,
+          last_name:      student.last_name,
+          stream_name:    stream.name,
+          total_points:   Math.round(grandTotal * 100) / 100,
+          average:        Math.round(average    * 100) / 100,
+          subjects_count: subjectCount,
+          grade:          gradeInfo.grade,
+          grade_label:    gradeInfo.label,
+        });
+      }
+    }
+
+    allResults.sort((a, b) => b.average - a.average);
+    allResults.forEach((r, i) => { r.overall_position = i + 1; });
+
+    res.json({
+      form_level,
+      streams: streams.map(s => s.name),
+      results: allResults,
+      total_students: allResults.length,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

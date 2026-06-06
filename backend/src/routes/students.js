@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 
+// Strip time portion from ISO date strings so MySQL accepts them
+const formatDate = (val) => {
+  if (!val) return null;
+  return val.toString().split('T')[0];
+};
+
 // GET all students
 router.get('/', async (req, res) => {
   try {
@@ -48,9 +54,9 @@ router.post('/', async (req, res) => {
       INSERT INTO students
         (student_number, first_name, last_name, date_of_birth, gender, email, phone, address, stream_id, enrollment_date)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [student_number, first_name, last_name, date_of_birth || null,
+    `, [student_number, first_name, last_name, formatDate(date_of_birth),
         gender || null, email || null, phone || null,
-        address || null, stream_id, enrollment_date || null]);
+        address || null, stream_id, formatDate(enrollment_date)]);
 
     const [rows] = await pool.query(
       'SELECT s.*, cs.name AS stream_name FROM students s JOIN class_streams cs ON cs.id = s.stream_id WHERE s.id = ?',
@@ -76,7 +82,7 @@ router.put('/:id', async (req, res) => {
         student_number=?, first_name=?, last_name=?, date_of_birth=?,
         gender=?, email=?, phone=?, address=?, stream_id=?, status=?
       WHERE id=?
-    `, [student_number, first_name, last_name, date_of_birth || null,
+    `, [student_number, first_name, last_name, formatDate(date_of_birth),
         gender || null, email || null, phone || null,
         address || null, stream_id, status || 'Active', req.params.id]);
 

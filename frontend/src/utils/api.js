@@ -55,3 +55,23 @@ export const getClassReportURL    = (id, params) => {
   const q = new URLSearchParams(params).toString();
   return `/api/reports/class/${id}/html${q ? '?' + q : ''}`;
 };
+
+// Form-wide ranking (e.g. all Form 1 streams combined)
+export const getFormRanking = (params) => API.get('/results/form-ranking', { params });
+
+// Subject report URL
+export const getSubjectReportURL = (subId, stId, params) => {
+  const q = new URLSearchParams(params).toString();
+  return `/api/reports/subject/${subId}/stream/${stId}/html${q ? '?' + q : ''}`;
+};
+
+// Form ranking report URL
+export const getFormRankingReportURL = (params) => {
+  const q = new URLSearchParams(params).toString();
+  return `/api/reports/form-ranking/html${q ? '?' + q : ''}`;
+};
+
+// Score management
+export const getStudentScores     = (student_id) => API.get(`/scores/student/${student_id}`);
+export const deleteScoreByStudentAssessment = (student_id, assessment_id) =>
+  API.delete(`/scores/student/${student_id}/assessment/${assessment_id}`);

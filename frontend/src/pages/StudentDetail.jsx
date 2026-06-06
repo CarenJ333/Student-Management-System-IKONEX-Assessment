@@ -1,29 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudent, updateStudent, getStudentResults, getStreams } from '../utils/api';
+import { getStudent, updateStudent, getStudentResults, getStreams, getStreamSubjects } from '../utils/api';
 import { useToast } from '../hooks/useToast';
 
 export default function StudentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [student, setStudent]   = useState(null);
-  const [results, setResults]   = useState(null);
-  const [streams, setStreams]   = useState([]);
-  const [editing, setEditing]   = useState(false);
-  const [form, setForm]         = useState({});
-  const [saving, setSaving]     = useState(false);
-  const [term, setTerm]         = useState('Term 1');
-  const [year, setYear]         = useState('2024/2025');
-  const { showToast, ToastComponent } = useToast();
+  const [student, setStudent] = useState(null);
+  const [results, setResults] = useState(null);
+  const [streams, setStreams] = useState([]);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm]       = useState({});
+  const [saving, setSaving]   = useState(false);
+  const [term, setTerm]       = useState('Term 1');
+  const [year, setYear]       = useState('2024/2025');
+  const [selSubject, setSelSubject]         = useState('');
+  const [streamSubjects, setStreamSubjects] = useState([]);
+  const { showToast, ToastComponent }       = useToast();
 
-  const loadStudent = () => getStudent(id).then(r => { setStudent(r.data); setForm(r.data); });
-  const loadResults = () => getStudentResults(id, { term, academic_year: year }).then(r => setResults(r.data));
+  const loadStudent = () => getStudent(id).then(r => {
+    setStudent(r.data);
+    setForm(r.data);
+    getStreamSubjects(r.data.stream_id).then(s => setStreamSubjects(Array.isArray(s.data) ? s.data : []));
+  });
+  const loadResults = () => getStudentResults(id, { term, academic_year: year, subject_id: selSubject || undefined }).then(r => setResults(r.data));
 
   useEffect(() => {
-    Promise.all([loadStudent(), getStreams().then(r => setStreams(r.data))]);
+    Promise.all([loadStudent(), getStreams().then(r => setStreams(Array.isArray(r.data) ? r.data : []))]);
   }, [id]);
 
-  useEffect(() => { if (id) loadResults(); }, [id, term, year]);
+  useEffect(() => { if (id) loadResults(); }, [id, term, year, selSubject]);
 
   const handleSave = async (e) => {
     e.preventDefault(); setSaving(true);
@@ -36,7 +42,17 @@ export default function StudentDetail() {
   };
 
   const openReport = () => {
-    window.open(`/api/reports/student/${id}/html?term=${term}&academic_year=${year}`, '_blank');
+    const url = `/api/reports/student/${id}/html?term=${term}&academic_year=${year}`;
+    const win = window.open(url, '_blank');
+    const tryPrint = setInterval(() => {
+      try {
+        if (win.document.readyState === 'complete') {
+          clearInterval(tryPrint);
+          win.focus();
+          win.print();
+        }
+      } catch (e) { clearInterval(tryPrint); }
+    }, 300);
   };
 
   if (!student) return <div className="loading">Loading student...</div>;
@@ -44,18 +60,19 @@ export default function StudentDetail() {
   return (
     <>
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <button className="btn btn-outline btn-sm" onClick={() => navigate('/students')}>← Back</button>
           <h2>{student.first_name} {student.last_name}</h2>
           <span className={`badge badge-${student.status === 'Active' ? 'active' : 'inactive'}`}>{student.status}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display:'flex', gap:8 }}>
           <button className="btn btn-outline" onClick={() => setEditing(!editing)}>
             {editing ? 'Cancel Edit' : '✏️ Edit'}
           </button>
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card</button>
+          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card (PDF)</button>
         </div>
       </div>
+
       <div className="page-body">
         {editing ? (
           <div className="card">
@@ -63,11 +80,11 @@ export default function StudentDetail() {
             <form onSubmit={handleSave}>
               <div className="form-grid">
                 {[
-                  { label: 'Student Number', key: 'student_number', required: true },
-                  { label: 'First Name',     key: 'first_name',     required: true },
-                  { label: 'Last Name',      key: 'last_name',      required: true },
-                  { label: 'Email',          key: 'email',          type: 'email' },
-                  { label: 'Phone',          key: 'phone' },
+                  { label:'Student Number', key:'student_number', required:true },
+                  { label:'First Name',     key:'first_name',     required:true },
+                  { label:'Last Name',      key:'last_name',      required:true },
+                  { label:'Email',          key:'email',          type:'email' },
+                  { label:'Phone',          key:'phone' },
                 ].map(f => (
                   <div key={f.key} className="form-group">
                     <label className="form-label">{f.label}{f.required ? ' *' : ''}</label>
@@ -99,7 +116,7 @@ export default function StudentDetail() {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <div style={{ display:'flex', gap:10, marginTop:8 }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -112,32 +129,40 @@ export default function StudentDetail() {
             <div className="card-title">Student Information</div>
             <div className="form-grid">
               {[
-                { label: 'Student Number', value: student.student_number },
-                { label: 'Stream',         value: student.stream_name },
-                { label: 'Date of Birth',  value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : '—' },
-                { label: 'Gender',         value: student.gender || '—' },
-                { label: 'Email',          value: student.email || '—' },
-                { label: 'Phone',          value: student.phone || '—' },
-                { label: 'Enrolled',       value: student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : '—' },
-                { label: 'Status',         value: student.status },
+                { label:'Student Number', value: student.student_number },
+                { label:'Stream',         value: student.stream_name },
+                { label:'Date of Birth',  value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : '—' },
+                { label:'Gender',         value: student.gender || '—' },
+                { label:'Email',          value: student.email  || '—' },
+                { label:'Phone',          value: student.phone  || '—' },
+                { label:'Enrolled',       value: student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : '—' },
+                { label:'Status',         value: student.status },
               ].map(f => (
                 <div key={f.label}>
-                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>{f.label}</div>
-                  <div style={{ marginTop: 4 }}>{f.value}</div>
+                  <div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', fontWeight:600 }}>{f.label}</div>
+                  <div style={{ marginTop:4 }}>{f.value}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* Academic Results */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div className="card-title" style={{ margin: 0 }}>Academic Results</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select className="form-control" style={{ width: 120 }} value={term} onChange={e => setTerm(e.target.value)}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <div className="card-title" style={{ margin:0 }}>Academic Results</div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <select className="form-control" style={{ width:160 }} value={selSubject}
+                onChange={e => setSelSubject(e.target.value)}>
+                <option value="">All Subjects</option>
+                {streamSubjects.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <select className="form-control" style={{ width:120 }} value={term} onChange={e => setTerm(e.target.value)}>
                 <option>Term 1</option><option>Term 2</option><option>Term 3</option>
               </select>
-              <input className="form-control" style={{ width: 110 }} value={year} onChange={e => setYear(e.target.value)} />
+              <input className="form-control" style={{ width:110 }} value={year} onChange={e => setYear(e.target.value)} />
             </div>
           </div>
 
@@ -146,29 +171,84 @@ export default function StudentDetail() {
               <div className="table-wrap">
                 <table>
                   <thead>
-                    <tr><th>Subject</th><th>Code</th><th>Total</th><th>Max</th><th>%</th><th>Grade</th><th>Remark</th></tr>
+                    <tr>
+                      <th>#</th><th>Subject</th><th>Code</th>
+                      <th>Exam /70</th><th>CA /30</th><th>Combined /100</th>
+                      <th>Grade</th><th>Remark</th><th>Subject Pos</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {results.subjects.map(s => (
+                    {results.subjects?.map((s, i) => (
                       <tr key={s.subject_id}>
+                        <td>{i + 1}</td>
                         <td>{s.subject_name}</td>
                         <td>{s.code}</td>
-                        <td>{parseFloat(s.total).toFixed(1)}</td>
-                        <td>{s.max_total}</td>
-                        <td>{s.percentage}%</td>
+                        <td>{s.exam_score ?? '—'}</td>
+                        <td>{s.ca_score  ?? '—'}</td>
+                        <td><strong>{s.combined ?? '—'}</strong></td>
                         <td><span className={`badge badge-${s.grade}`}>{s.grade}</span></td>
                         <td>{s.grade_label}</td>
+                        <td>
+                          <span style={{ fontWeight:600, color: s.subject_position <= 3 ? '#e8a020' : '#333' }}>
+                            #{s.subject_position}/{s.out_of}
+                          </span>
+                        </td>
                       </tr>
                     ))}
-                    {!results.subjects.length && <tr><td colSpan={7} className="empty">No scores recorded for this period</td></tr>}
+                    {!results.subjects?.length && (
+                      <tr><td colSpan={8} className="empty">No scores recorded for this period</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-              {results.subjects.length > 0 && (
-                <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0f4fa', borderRadius: 8, display: 'flex', gap: 32 }}>
-                  <div><span style={{ color: '#6b7280', fontSize: 12 }}>Total Marks</span><br /><strong>{results.summary.total_marks}</strong> / {results.summary.max_marks}</div>
-                  <div><span style={{ color: '#6b7280', fontSize: 12 }}>Average</span><br /><strong>{results.summary.average}%</strong></div>
-                  <div><span style={{ color: '#6b7280', fontSize: 12 }}>Overall Grade</span><br /><strong className={`badge badge-${results.summary.grade}`}>{results.summary.grade} — {results.summary.grade_label}</strong></div>
+              {results.subjects?.length > 0 && (
+                <div style={{ marginTop:16, padding:'14px 16px', background:'#f0f4fa', borderRadius:8, display:'flex', gap:32, flexWrap:'wrap' }}>
+                  {!selSubject && (
+                    <>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Subjects Scored</div>
+                        <strong>{results.summary?.total_subjects}</strong>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Total Points</div>
+                        <strong>{results.summary?.total_points}</strong>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Average</div>
+                        <strong>{results.summary?.average}%</strong>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Overall Grade</div>
+                        <strong>
+                          <span className={`badge badge-${results.summary?.grade}`}>
+                            {results.summary?.grade} — {results.summary?.grade_label}
+                          </span>
+                        </strong>
+                      </div>
+                    </>
+                  )}
+                  {selSubject && results.subject_position && (
+                    <div style={{ display:'flex', gap:32 }}>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Subject Position</div>
+                        <strong style={{ fontSize:18, color:'#e8a020' }}>
+                          #{results.subject_position.position} / {results.subject_position.out_of}
+                        </strong>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Combined Score</div>
+                        <strong>{results.subjects[0]?.combined}/100</strong>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>Grade</div>
+                        <strong>
+                          <span className={`badge badge-${results.subjects[0]?.grade}`}>
+                            {results.subjects[0]?.grade} — {results.subjects[0]?.grade_label}
+                          </span>
+                        </strong>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
