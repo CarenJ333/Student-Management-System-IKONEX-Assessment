@@ -1,8 +1,8 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const { pool } = require('../config/database');
 
-async function getGrade(pool, score) {
+async function getGrade(score) {
   const [grades] = await pool.query(
     'SELECT * FROM grading_scales WHERE ? BETWEEN min_score AND max_score LIMIT 1',
     [score]
@@ -10,44 +10,36 @@ async function getGrade(pool, score) {
   return grades.length ? grades[0] : { grade: 'U', label: 'Fail', points: 0 };
 }
 
-// Helper: calculate weighted score for a subject
-// Exam (max 70) + CA (max 30) = 100 total
-// We normalize each assessment type to its weight
-async function getStudentSubjectScore(pool, student_id, subject_id, stream_id, term, academic_year) {
+async function getStudentSubjectScore(student_id, subject_id, stream_id, term, academic_year) {
   let query = `
-    SELECT sc.score, a.max_score, a.type, a.weight
+    SELECT sc.score, a.max_score, a.type
     FROM scores sc
     JOIN assessments a ON a.id = sc.assessment_id
-    WHERE sc.student_id = ? AND a.subject_id = ? AND a.stream_id = ?
+    WHERE sc.student_id=? AND a.subject_id=? AND a.stream_id=?
   `;
   const params = [student_id, subject_id, stream_id];
-  if (term)          { query += ' AND a.term = ?';          params.push(term); }
-  if (academic_year) { query += ' AND a.academic_year = ?'; params.push(academic_year); }
+  if (term)          { query += ' AND a.term=?';          params.push(term); }
+  if (academic_year) { query += ' AND a.academic_year=?'; params.push(academic_year); }
 
   const [scores] = await pool.query(query, params);
 
-  // Separate exam and CA scores
   const examScores = scores.filter(s => s.type === 'Exam');
-  const caScores   = scores.filter(s => s.type === 'CA' || s.type === 'Quiz' || s.type === 'Assignment');
+  const caScores   = scores.filter(s => ['CA','Quiz','Assignment'].includes(s.type));
 
-  // Calculate exam total as percentage of 70
   const examTotal    = examScores.reduce((s, r) => s + parseFloat(r.score), 0);
   const examMax      = examScores.reduce((s, r) => s + parseFloat(r.max_score), 0);
   const examWeighted = examMax > 0 ? (examTotal / examMax) * 70 : 0;
 
-  // Calculate CA total as percentage of 30
   const caTotal    = caScores.reduce((s, r) => s + parseFloat(r.score), 0);
   const caMax      = caScores.reduce((s, r) => s + parseFloat(r.max_score), 0);
   const caWeighted = caMax > 0 ? (caTotal / caMax) * 30 : 0;
 
-  // Combined score out of 100
-  const combined = examWeighted + caWeighted;
-
+  const combined = Math.round((examWeighted + caWeighted) * 100) / 100;
   return {
     exam_score: Math.round(examWeighted * 100) / 100,
     ca_score:   Math.round(caWeighted   * 100) / 100,
-    combined:   Math.round(combined     * 100) / 100,
-    has_scores: scores.length > 0,
+    combined,
+    has_scores: scores.length > 0 && combined > 0,
   };
 }
 
@@ -64,7 +56,6 @@ router.get('/student/:student_id', async (req, res) => {
     if (!students.length) return res.status(404).json({ error: 'Student not found' });
     const student = students[0];
 
-    // Get subjects — filter by subject_id if provided
     let subjectQuery = `
       SELECT sub.id, sub.name, sub.code FROM subjects sub
       JOIN stream_subjects ss ON ss.subject_id = sub.id
@@ -74,28 +65,26 @@ router.get('/student/:student_id', async (req, res) => {
     if (subject_id) { subjectQuery += ' AND sub.id = ?'; subjectParams.push(subject_id); }
     const [streamSubjects] = await pool.query(subjectQuery, subjectParams);
 
+    const [classStudentsAll] = await pool.query(
+      "SELECT id FROM students WHERE stream_id=? AND status='Active'", [student.stream_id]
+    );
+
     const subjectResults = [];
     let grandTotal = 0;
 
-    // Get all active students in stream for position calculations
-    const [classStudentsAll] = await pool.query(
-      'SELECT id FROM students WHERE stream_id = ? AND status = "Active"', [student.stream_id]
-    );
-
     for (const subj of streamSubjects) {
-      const scores = await getStudentSubjectScore(pool, student_id, subj.id, student.stream_id, term, academic_year);
+      const scores = await getStudentSubjectScore(student_id, subj.id, student.stream_id, term, academic_year);
       if (!scores.has_scores) continue;
 
-      // Calculate subject position within class
       const subjectScores = [];
       for (const cs of classStudentsAll) {
-        const sc = await getStudentSubjectScore(pool, cs.id, subj.id, student.stream_id, term, academic_year);
+        const sc = await getStudentSubjectScore(cs.id, subj.id, student.stream_id, term, academic_year);
         if (sc.has_scores) subjectScores.push({ id: cs.id, combined: sc.combined });
       }
       subjectScores.sort((a, b) => b.combined - a.combined);
-      const subjectPos = subjectScores.findIndex(s => s.id === parseInt(student_id)) + 1;
+      const subjectPos = subjectScores.findIndex(s => String(s.id) === String(student_id)) + 1;
 
-      const gradeInfo = await getGrade(pool, scores.combined);
+      const gradeInfo = await getGrade(scores.combined);
       subjectResults.push({
         subject_id:       subj.id,
         subject_name:     subj.name,
@@ -113,71 +102,55 @@ router.get('/student/:student_id', async (req, res) => {
     }
 
     const average      = subjectResults.length > 0 ? grandTotal / subjectResults.length : 0;
-    const overallGrade = await getGrade(pool, average);
+    const overallGrade = await getGrade(average);
 
-    // If filtering by a single subject, calculate student's position in that subject within the class
     let subjectPosition = null;
     if (subject_id && subjectResults.length === 1) {
-      const [classStudents] = await pool.query(
-        'SELECT id FROM students WHERE stream_id = ? AND status = "Active"', [student.stream_id]
-      );
-      const classScores = [];
-      for (const cs of classStudents) {
-        const sc = await getStudentSubjectScore(pool, cs.id, subject_id, student.stream_id, term, academic_year);
-        if (sc.has_scores) classScores.push({ id: cs.id, combined: sc.combined });
-      }
-      classScores.sort((a, b) => b.combined - a.combined);
-      const pos = classScores.findIndex(s => s.id === parseInt(student_id));
-      subjectPosition = { position: pos + 1, out_of: classScores.length };
+      subjectPosition = {
+        position: subjectResults[0].subject_position,
+        out_of:   subjectResults[0].out_of,
+      };
     }
 
     res.json({
       student,
-      subject_position: subjectPosition,
       subjects: subjectResults,
+      subject_position: subjectPosition,
       summary: {
         total_subjects: subjectResults.length,
         total_points:   Math.round(grandTotal * 100) / 100,
-        average:        Math.round(average   * 100) / 100,
+        average:        Math.round(average    * 100) / 100,
         grade:          overallGrade.grade,
         grade_label:    overallGrade.label,
       }
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET class results — ranked
+// GET class results
 router.get('/class/:stream_id', async (req, res) => {
   try {
     const { term, academic_year } = req.query;
     const { stream_id } = req.params;
 
     const [students] = await pool.query(
-      'SELECT * FROM students WHERE stream_id = ? AND status = "Active" ORDER BY last_name, first_name',
+      "SELECT * FROM students WHERE stream_id=? AND status='Active' ORDER BY last_name, first_name",
+      [stream_id]
+    );
+    const [streamSubjects] = await pool.query(
+      'SELECT sub.id FROM subjects sub JOIN stream_subjects ss ON ss.subject_id=sub.id WHERE ss.stream_id=?',
       [stream_id]
     );
 
-    const [streamSubjects] = await pool.query(`
-      SELECT sub.id FROM subjects sub
-      JOIN stream_subjects ss ON ss.subject_id = sub.id
-      WHERE ss.stream_id = ?
-    `, [stream_id]);
-
     const results = [];
     for (const student of students) {
-      let grandTotal = 0;
-      let subjectCount = 0;
-
+      let grandTotal = 0, subjectCount = 0;
       for (const subj of streamSubjects) {
-        const scores = await getStudentSubjectScore(pool, student.id, subj.id, stream_id, term, academic_year);
-        if (scores.has_scores) { grandTotal += scores.combined; subjectCount++; }
+        const sc = await getStudentSubjectScore(student.id, subj.id, stream_id, term, academic_year);
+        if (sc.has_scores) { grandTotal += sc.combined; subjectCount++; }
       }
-
       const average   = subjectCount > 0 ? grandTotal / subjectCount : 0;
-      const gradeInfo = await getGrade(pool, average);
-
+      const gradeInfo = await getGrade(average);
       results.push({
         student_id:     student.id,
         student_number: student.student_number,
@@ -193,29 +166,26 @@ router.get('/class/:stream_id', async (req, res) => {
 
     results.sort((a, b) => b.average - a.average);
     results.forEach((r, i) => { r.position = i + 1; });
-
     res.json({ stream_id, results, total_students: results.length });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET subject performance for a class
+// GET subject performance
 router.get('/subject/:subject_id/stream/:stream_id', async (req, res) => {
   try {
     const { subject_id, stream_id } = req.params;
     const { term, academic_year }   = req.query;
 
     const [students] = await pool.query(
-      'SELECT * FROM students WHERE stream_id = ? AND status = "Active" ORDER BY last_name, first_name',
+      "SELECT * FROM students WHERE stream_id=? AND status='Active' ORDER BY last_name, first_name",
       [stream_id]
     );
 
     const results = [];
     for (const student of students) {
-      const scores = await getStudentSubjectScore(pool, student.id, subject_id, stream_id, term, academic_year);
+      const scores = await getStudentSubjectScore(student.id, subject_id, stream_id, term, academic_year);
       if (!scores.has_scores) continue;
-      const g = await getGrade(pool, scores.combined);
+      const g = await getGrade(scores.combined);
       results.push({
         student_id:     student.id,
         student_number: student.student_number,
@@ -231,46 +201,39 @@ router.get('/subject/:subject_id/stream/:stream_id', async (req, res) => {
 
     results.sort((a, b) => b.percentage - a.percentage);
     results.forEach((r, i) => { r.subject_position = i + 1; });
-
     res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET combined form ranking (e.g. all Form 1 streams together)
+// GET form-wide ranking
 router.get('/form-ranking', async (req, res) => {
   try {
     const { form_level, academic_year, term } = req.query;
     if (!form_level) return res.status(400).json({ error: 'form_level is required' });
 
     const [streams] = await pool.query(
-      'SELECT * FROM class_streams WHERE form_level = ? AND academic_year = ?',
+      'SELECT * FROM class_streams WHERE form_level=? AND academic_year=?',
       [form_level, academic_year || '2024/2025']
     );
     if (!streams.length) return res.status(404).json({ error: 'No streams found for this form level' });
 
     const allResults = [];
-
     for (const stream of streams) {
       const [students] = await pool.query(
-        'SELECT * FROM students WHERE stream_id = ? AND status = "Active"',
+        "SELECT * FROM students WHERE stream_id=? AND status='Active'", [stream.id]
+      );
+      const [streamSubjects] = await pool.query(
+        'SELECT sub.id FROM subjects sub JOIN stream_subjects ss ON ss.subject_id=sub.id WHERE ss.stream_id=?',
         [stream.id]
       );
-      const [streamSubjects] = await pool.query(`
-        SELECT sub.id FROM subjects sub
-        JOIN stream_subjects ss ON ss.subject_id = sub.id
-        WHERE ss.stream_id = ?
-      `, [stream.id]);
-
       for (const student of students) {
         let grandTotal = 0, subjectCount = 0;
         for (const subj of streamSubjects) {
-          const scores = await getStudentSubjectScore(pool, student.id, subj.id, stream.id, term, academic_year);
-          if (scores.has_scores) { grandTotal += scores.combined; subjectCount++; }
+          const sc = await getStudentSubjectScore(student.id, subj.id, stream.id, term, academic_year);
+          if (sc.has_scores) { grandTotal += sc.combined; subjectCount++; }
         }
         const average   = subjectCount > 0 ? grandTotal / subjectCount : 0;
-        const gradeInfo = await getGrade(pool, average);
+        const gradeInfo = await getGrade(average);
         allResults.push({
           student_id:     student.id,
           student_number: student.student_number,
@@ -288,16 +251,13 @@ router.get('/form-ranking', async (req, res) => {
 
     allResults.sort((a, b) => b.average - a.average);
     allResults.forEach((r, i) => { r.overall_position = i + 1; });
-
     res.json({
       form_level,
       streams: streams.map(s => s.name),
       results: allResults,
       total_students: allResults.length,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET grading scales
@@ -305,9 +265,7 @@ router.get('/grading-scales', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM grading_scales ORDER BY min_score DESC');
     res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;
