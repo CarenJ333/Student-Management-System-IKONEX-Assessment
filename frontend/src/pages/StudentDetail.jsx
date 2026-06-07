@@ -42,7 +42,7 @@ export default function StudentDetail() {
   };
 
   const openReport = () => {
-    const url = `/api/reports/student/${id}/html?term=${term}&academic_year=${year}`;
+    const url = `${import.meta.env.VITE_API_URL || '/api'}/reports/student/${id}/html?term=${term}&academic_year=${year}`;
     window.open(url, '_blank');
   };
 
@@ -60,7 +60,7 @@ export default function StudentDetail() {
           <button className="btn btn-outline" onClick={() => setEditing(!editing)}>
             {editing ? 'Cancel Edit' : '✏️ Edit'}
           </button>
-          <button className="btn btn-primary" onClick={openReport}> Print Report Card (PDF)</button>
+          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card (PDF)</button>
         </div>
       </div>
 

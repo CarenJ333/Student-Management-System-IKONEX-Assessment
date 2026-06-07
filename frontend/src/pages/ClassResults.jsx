@@ -22,7 +22,7 @@ export default function ClassResults() {
   };
 
   const openReport = () => {
-    window.open(`/api/reports/class/${selStream}/html?term=${term}&academic_year=${year}`, '_blank');
+    window.open(`${import.meta.env.VITE_API_URL || '/api'}/reports/class/${selStream}/html?term=${term}&academic_year=${year}`, '_blank');
   };
 
   const streamName = streams.find(s => String(s.id) === String(selStream))?.name || '';
@@ -63,7 +63,7 @@ export default function ClassResults() {
             </div>
           </div>
           <button className="btn btn-primary" disabled={!selStream || loading} onClick={handleLoad}>
-            {loading ? 'Loading...' : 'Load Rankings'}
+            {loading ? 'Loading...' : '🏆 Load Rankings'}
           </button>
         </div>
 

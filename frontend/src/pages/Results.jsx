@@ -41,7 +41,7 @@ export default function Results() {
   };
 
   const openReport = () => {
-    const url = `/api/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`;
+    const url = `${import.meta.env.VITE_API_URL || '/api'}/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`;
     window.open(url, '_blank');
   };
 
@@ -50,7 +50,7 @@ export default function Results() {
       <div className="page-header">
         <h2>Student Results</h2>
         {results && selStudent && (
-          <button className="btn btn-primary" onClick={openReport}> Print Report Card</button>
+          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card</button>
         )}
       </div>
       <div className="page-body">
@@ -99,7 +99,7 @@ export default function Results() {
             </div>
           </div>
           <button className="btn btn-primary" disabled={!selStudent || loading} onClick={handleLoad}>
-            {loading ? 'Loading...' : ' Load Results'}
+            {loading ? 'Loading...' : '🔍 Load Results'}
           </button>
         </div>
 
