@@ -1,19 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
-
-// Add this after the dotenv section
-console.log('=== ENVIRONMENT DEBUG ===');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('DB_HOST:', process.env.DB_HOST ? 'SET' : 'NOT SET');
-console.log('DB_USER:', process.env.DB_USER ? 'SET' : 'NOT SET');
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('========================');
-
+require('dotenv').config();
 
 const { testConnection } = require('./config/database');
 const streamsRouter = require('./routes/streams');
@@ -28,7 +15,13 @@ const gradingRouter = require('./routes/grading');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    process.env.FRONTEND_URL || '',
+  ].filter(Boolean),
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -51,16 +44,6 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error', message: err.message });
-});
-
-app.get('/debug-db-config', (req, res) => {
-  res.json({
-    DB_HOST: process.env.DB_HOST,
-    DB_PORT: process.env.DB_PORT,
-    DB_USER: process.env.DB_USER,
-    DB_NAME: process.env.DB_NAME,
-    NODE_ENV: process.env.NODE_ENV
-  });
 });
 
 app.listen(PORT, async () => {

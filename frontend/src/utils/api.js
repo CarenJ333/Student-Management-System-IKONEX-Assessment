@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: '/api' });
+const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
 
 // Streams
 export const getStreams         = ()         => API.get('/streams');
@@ -49,11 +49,11 @@ export const getGradingScales   = ()         => API.get('/grading');
 // Reports
 export const getStudentReportURL  = (id, params) => {
   const q = new URLSearchParams(params).toString();
-  return `/api/reports/student/${id}/html${q ? '?' + q : ''}`;
+  return `${import.meta.env.VITE_API_URL || '/api'}/reports/student/${id}/html${q ? '?' + q : ''}`;
 };
 export const getClassReportURL    = (id, params) => {
   const q = new URLSearchParams(params).toString();
-  return `/api/reports/class/${id}/html${q ? '?' + q : ''}`;
+  return `${import.meta.env.VITE_API_URL || '/api'}/reports/class/${id}/html${q ? '?' + q : ''}`;
 };
 
 // Form-wide ranking (e.g. all Form 1 streams combined)
@@ -62,7 +62,7 @@ export const getFormRanking = (params) => API.get('/results/form-ranking', { par
 // Subject report URL
 export const getSubjectReportURL = (subId, stId, params) => {
   const q = new URLSearchParams(params).toString();
-  return `/api/reports/subject/${subId}/stream/${stId}/html${q ? '?' + q : ''}`;
+  return `${import.meta.env.VITE_API_URL || '/api'}/reports/subject/${subId}/stream/${stId}/html${q ? '?' + q : ''}`;
 };
 
 // Form ranking report URL
