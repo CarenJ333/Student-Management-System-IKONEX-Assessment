@@ -40,9 +40,9 @@ export default function Results() {
       .finally(() => setLoading(false));
   };
 
-  const openReport = () => {
-    const url = `${import.meta.env.VITE_API_URL || '/api'}/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`;
-    window.open(url, '_blank');
+  const getReportURL = () => {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    return `${base}/reports/student/${selStudent.id}/html?term=${term}&academic_year=${year}`;
   };
 
   return (
@@ -50,7 +50,7 @@ export default function Results() {
       <div className="page-header">
         <h2>Student Results</h2>
         {results && selStudent && (
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card</button>
+          <a className="btn btn-primary" href={selStudent ? getReportURL() : '#'} target="_blank" rel="noreferrer">📄 Print Report Card</a>
         )}
       </div>
       <div className="page-body">

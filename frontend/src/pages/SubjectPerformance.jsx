@@ -40,8 +40,9 @@ export default function SubjectPerformance() {
       .finally(() => setLoading(false));
   };
 
-  const openClassReport = () => {
-    window.open(`${import.meta.env.VITE_API_URL || '/api'}/reports/subject/${selSubject}/stream/${selStream}/html?term=${term}&academic_year=${year}`, '_blank');
+  const getClassReportURL = () => {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    return `${base}/reports/subject/${selSubject}/stream/${selStream}/html?term=${term}&academic_year=${year}`;
   };
 
   // ── Individual student subject view ────────────────────────
@@ -91,7 +92,7 @@ export default function SubjectPerformance() {
       <div className="page-header">
         <h2>Subject Performance</h2>
         {classResults?.length > 0 && (
-          <button className="btn btn-primary" onClick={openClassReport}>📄 Print Subject Report</button>
+          <a className="btn btn-primary" href={getClassReportURL()} target="_blank" rel="noreferrer">📄 Print Subject Report</a>
         )}
       </div>
       <div className="page-body">

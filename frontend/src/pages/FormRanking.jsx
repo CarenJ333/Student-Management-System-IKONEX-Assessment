@@ -16,8 +16,9 @@ export default function FormRanking() {
       .finally(() => setLoading(false));
   };
 
-  const openReport = () => {
-    window.open(`${import.meta.env.VITE_API_URL || '/api'}/reports/form-ranking/html?form_level=${formLevel}&term=${term}&academic_year=${year}`, '_blank');
+  const getReportURL = () => {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    return `${base}/reports/form-ranking/html?form_level=${formLevel}&term=${term}&academic_year=${year}`;
   };
 
   const gradeColor = (g) => {
@@ -30,7 +31,7 @@ export default function FormRanking() {
       <div className="page-header">
         <h2>Form-Wide Rankings</h2>
         {results && (
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Form Report</button>
+          <a className="btn btn-primary" href={getReportURL()} target="_blank" rel="noreferrer">📄 Print Form Report</a>
         )}
       </div>
       <div className="page-body">

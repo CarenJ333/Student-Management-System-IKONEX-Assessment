@@ -21,8 +21,9 @@ export default function ClassResults() {
       .finally(() => setLoading(false));
   };
 
-  const openReport = () => {
-    window.open(`${import.meta.env.VITE_API_URL || '/api'}/reports/class/${selStream}/html?term=${term}&academic_year=${year}`, '_blank');
+  const getReportURL = () => {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    return `${base}/reports/class/${selStream}/html?term=${term}&academic_year=${year}`;
   };
 
   const streamName = streams.find(s => String(s.id) === String(selStream))?.name || '';
@@ -37,7 +38,7 @@ export default function ClassResults() {
       <div className="page-header">
         <h2>Class Rankings</h2>
         {results && (
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Class Report</button>
+          <a className="btn btn-primary" href={getReportURL()} target="_blank" rel="noreferrer">📄 Print Class Report</a>
         )}
       </div>
       <div className="page-body">

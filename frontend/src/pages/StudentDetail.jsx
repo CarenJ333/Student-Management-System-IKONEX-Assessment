@@ -41,9 +41,9 @@ export default function StudentDetail() {
     } finally { setSaving(false); }
   };
 
-  const openReport = () => {
-    const url = `${import.meta.env.VITE_API_URL || '/api'}/reports/student/${id}/html?term=${term}&academic_year=${year}`;
-    window.open(url, '_blank');
+  const getReportURL = () => {
+    const base = import.meta.env.VITE_API_URL || '/api';
+    return `${base}/reports/student/${id}/html?term=${term}&academic_year=${year}`;
   };
 
   if (!student) return <div className="loading">Loading student...</div>;
@@ -60,7 +60,7 @@ export default function StudentDetail() {
           <button className="btn btn-outline" onClick={() => setEditing(!editing)}>
             {editing ? 'Cancel Edit' : '✏️ Edit'}
           </button>
-          <button className="btn btn-primary" onClick={openReport}>📄 Print Report Card (PDF)</button>
+          <a className="btn btn-primary" href={getReportURL()} target="_blank" rel="noreferrer">📄 Print Report Card (PDF)</a>
         </div>
       </div>
 
